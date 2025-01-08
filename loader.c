@@ -1,40 +1,43 @@
 #include <stdio.h>
 #include <stdlib.h>
-#include <unistd.h> /* for pipe(), fork(), close(), write(), read() */
+#include <unistd.h>  /* for pipe(), fork(), close(), write(), read() */
 #include <sys/types.h>
 #include <sys/wait.h>
 
 int main() {
-
     int pipe_fd[2];
-    if (pipe(pipe_fd) == -1) // NOTE creating internal pipe in the kernal operating system and recive read and write file descriptors to it (fd[0] for read, fd[1] for write).
-    { 
+    if (pipe(pipe_fd) == -1) { // NOTE creating internal pipe in the kernal operating system and recive read and write file descriptors to it (fd[0] for read, fd[1] for write).
         perror("pipe");
         exit(EXIT_FAILURE);
     }
 
     pid_t pid1 = fork();
-    if (pid1 == -1) {
+    if (pid1 == -1) { 
         perror("fork");
         exit(EXIT_FAILURE);
     }
 
-    if (!pid1) // child1 process 
-    {
-        // Child process 1: Load A compiled programn.
-        char read_fd_str[10], write_fd_str[10];
+    if (!pid1) // Child1 process
+    { 
+        
+        // Child process 1: Load A compiled program.
+        // NOTE: the file descriptors will be passed via argv[] (because when loading other programn via exce functions the entire context is replaces including the father process file descriptors)
+        //          - hence all the file descriptors must be converted into a const char* format before we pass them as arguments to argv[].
+
+        char read_fd_str[10], write_fd_str[10]; // 10 is the maximum number of chars needed to represent a file descriptor as a string.
+        //NOTE: int snprintf(char *bufferStr, size_t size, const char *format, value1ofTheSameTypeFormat, value2ofTheSameTypeFormat); --> its a function which converts other values to their string represntation.
         snprintf(read_fd_str, sizeof(read_fd_str), "%d", pipe_fd[0]);
         snprintf(write_fd_str, sizeof(write_fd_str), "%d", pipe_fd[1]);
 
-        execl("./A", "./A", read_fd_str, write_fd_str, NULL); // NOTE: executing the compiled A.c and passing to its main function the file descriptors as variable arguments.
-
-        perror("execl"); // NOTE: if we reach here it means that the execl function as failed.
+        // NOTE: int execl(const char *path, const char *arg0, const char* arg1, const char* arg2....., NULL); --> excel is a part of the the exec family system call which loads executeable programn and replace the entire context with it.
+        execl("./compiledFilesToLoad/A", "./compiledFilesToLoad/A", read_fd_str, write_fd_str, NULL); // NOTE: executing the compiled A.c and passing to its main function the file descriptors as variable arguments.
+                                                              // after it execute we do not return to our code. ordered explaination:
+                                                              // 01) ./compiledFilesToLoad/A - the path to the executeable file to run. 
+                                                              // 02) ./compiledFilesToLoad/A - the name of the programn 
+                                                              // 03) everything after that are a list of parameters passed to the argv[] of the new programn which will be executed. in our case its the read_fd_str and write_fd_str, the NULL symbolize the end of the argv[] array.
+        perror("execl"); // if we are here it means the execl function as failed.
         exit(EXIT_FAILURE);
     }
-
-
-
-
 
     pid_t pid2 = fork();
     if (pid2 == -1) {
@@ -42,24 +45,22 @@ int main() {
         exit(EXIT_FAILURE);
     }
 
-    if (!pid2) //  child2 process.
+    if (!pid2) // Child2 process
     {
-        // Child process 2: Load B comipled programn.
         char read_fd_str[10], write_fd_str[10];
         snprintf(read_fd_str, sizeof(read_fd_str), "%d", pipe_fd[0]);
         snprintf(write_fd_str, sizeof(write_fd_str), "%d", pipe_fd[1]);
 
-        execl("./B", "./B", read_fd_str, write_fd_str, NULL); // NOTE: executing the compiled B.c and passing to its main function the file descriptors as variable arguments.
-
-        perror("execl"); // NOTE: if we reach here it means that the execl function as failed.
+        execl("./compiledFilesToLoad/B", "./compiledFilesToLoad/B", read_fd_str, write_fd_str, NULL);// NOTE: executing the compiled B.c and passing to its main function the file descriptors as variable arguments.
+        perror("execl");
         exit(EXIT_FAILURE);
     }
 
-
-    // Parent process: Wait for both children to finish
+    // Parent process: Close both ends of the pipe
     close(pipe_fd[0]);
     close(pipe_fd[1]);
 
+    // Wait for both children to finish
     wait(NULL);
     wait(NULL);
 
@@ -67,6 +68,7 @@ int main() {
 
     return 0;
 }
+
 /* 
     01)NOTE: keep in mind - how fork execution work flow: 
               - The parent process (let’s call it P) creates a child process (let’s call it C1).

@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include <unistd.h>
 
 int main(int argc, char *argv[]) {
@@ -17,22 +18,16 @@ int main(int argc, char *argv[]) {
 
     // Write a message to the pipe
     const char *message = "Hello from A!";
-    if (write(write_fd, message, sizeof(message)) == -1) {
+    if (write(write_fd, message, strlen(message)) == -1) {
         perror("write");
         exit(EXIT_FAILURE);
     }
 
     printf("A: Sent message to the pipe.\n");
-    fflush(stdout);  // Ensure immediate output
+    fflush(stdout);
 
-    // Wait for a response from B
-    char buffer[128];
-    ssize_t bytes_read = read(read_fd, buffer, sizeof(buffer) - 1);
-    if (bytes_read > 0) {
-        buffer[bytes_read] = '\0';
-        printf("A: Received response from B: %s\n", buffer);
-    }
-
+    // Close the write end
     close(write_fd);
+
     return 0;
 }

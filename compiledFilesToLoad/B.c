@@ -21,17 +21,12 @@ int main(int argc, char *argv[]) {
     if (bytes_read > 0) {
         buffer[bytes_read] = '\0';  // Null-terminate the string
         printf("B: Received message: %s\n", buffer);
-
-        // Send a response back to A
-        const char *response = "Thank you, A!";
-        if (write(write_fd, response, sizeof(response)) == -1) {
-            perror("write");
-            exit(EXIT_FAILURE);
-        }
     } else {
         perror("read");
     }
 
+    // Close the read end
     close(read_fd);
+
     return 0;
 }
