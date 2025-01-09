@@ -15,6 +15,7 @@ int main(int argc, char *argv[]) {
 
     // Read a message from Child 1
     char buffer[256];
+
     ssize_t bytes_read = read(read_fd, buffer, sizeof(buffer) - 1);
     if (bytes_read > 0) {
         buffer[bytes_read] = '\0';  // Null-terminate the string
@@ -22,9 +23,9 @@ int main(int argc, char *argv[]) {
     }
 
     // Send a reply to Child 1
-    const char *reply_to_A = "Thank you from B!";
-    write(write_fd, reply_to_A, strlen(reply_to_A));
-    printf("B: Sent reply to A: %s\n", reply_to_A);
+    const char *reply_to_child1 = "Thank you from child2!";
+    write(write_fd, reply_to_child1, strlen(reply_to_child1));
+    printf("B: Sent reply to A: %s\n", reply_to_child1);
 
     // Close the file descriptors
     close(read_fd);
