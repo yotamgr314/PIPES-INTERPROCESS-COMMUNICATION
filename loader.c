@@ -9,7 +9,7 @@ int main()
     int pipe_fd_ofChild1WriteChild2Read[2];
     int pipe_fd_ofChild2WriteChild1Read[2];
 
-    if (pipe(pipe_fd_ofChild1WriteChild2Read) == -1 | pipe(pipe_fd_ofChild2WriteChild1Read) == -1) // NOTE creating internal pipe in the kernal operating system and recive read and write file descriptors to it (fd[0] for read, fd[1] for write).
+    if (pipe(pipe_fd_ofChild1WriteChild2Read) == -1 || pipe(pipe_fd_ofChild2WriteChild1Read) == -1) // NOTE creating internal pipe in the kernal operating system and recive read and write file descriptors to it (fd[0] for read, fd[1] for write).
     {
         perror("pipe");
         exit(EXIT_FAILURE);
@@ -53,7 +53,7 @@ int main()
         char read_fd_str[10], write_fd_str[10];
         snprintf(read_fd_str, sizeof(read_fd_str), "%d", pipe_fd_ofChild1WriteChild2Read[0]);
         snprintf(write_fd_str, sizeof(write_fd_str), "%d", pipe_fd_ofChild2WriteChild1Read[1]);
-        execl("./compiledFilesToLoad/A", "./compiledFilesToLoad/A", write_fd_str, read_fd_str, NULL); // NOTE: executing the compiled B.c and passing to its main function the file descriptors as variable arguments.
+        execl("./compiledFilesToLoad/B", "./compiledFilesToLoad/B", write_fd_str, read_fd_str, NULL); // NOTE: executing the compiled B.c and passing to its main function the file descriptors as variable arguments.
         perror("execl");
         exit(EXIT_FAILURE);
     }
