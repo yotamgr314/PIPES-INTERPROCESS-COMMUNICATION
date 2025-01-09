@@ -30,16 +30,15 @@ int main()
 
         // NOTE: int snprintf(char *bufferStr, size_t size, const char *format, value1ofTheSameTypeFormat, value2ofTheSameTypeFormat); --> its a function which converts other values to their string represntation.
         char read_fd_str[10], write_fd_str[10];// 10 is the maximum number of chars needed to represent a file descriptor as a string.
-        snprintf(read_fd_str, sizeof(read_fd_str), "%d", pipe_fd_ofChild1WriteChild2Read[0]);
-        snprintf(write_fd_str, sizeof(write_fd_str), "%d", pipe_fd_ofChild2WriteChild1Read[1]);
+        snprintf(read_fd_str, sizeof(read_fd_str), "%d", pipe_fd_ofChild2WriteChild1Read[0]);
+        snprintf(write_fd_str, sizeof(write_fd_str), "%d", pipe_fd_ofChild1WriteChild2Read[1]);
 
         // NOTE: int execl(const char *path, const char *arg0, const char* arg1, const char* arg2....., NULL); --> excel is a part of the the exec family system call which loads executeable programn and replace the entire context with it.
         execl("./compiledFilesToLoad/A", "./compiledFilesToLoad/A", write_fd_str, read_fd_str, NULL); // NOTE: executing the compiled A.c and passing to its main function the file descriptors as variable arguments.
         perror("execl");                                                                              // after it execute we do not return to our code. ordered explaination:
         exit(EXIT_FAILURE);                                                                           // 01) ./compiledFilesToLoad/A - the path to the executeable file to run.
                                                                                                       // 02) ./compiledFilesToLoad/A - the name of the programn
-                                                                                                      // 03) everything after that are a list of parameters passed to the argv[] of the new programn which will be executed. in our case its the read_fd_str and write_fd_str, the NULL symbolize the end of the argv[] array.
-                                                                                                      // if we are here it means the execl function as failed.
+                                                                                                      // 03) everything after that are a list of parameters passed to the argv[] of the new programn which will be executed. in our case its the read_fd_str and write_fd_str, the NULL symbolize the end of the argv[] array.                                                                                                  // if we are here it means the execl function as failed.
     }
 
     pid_t pid2 = fork();
@@ -52,26 +51,46 @@ int main()
     if (!pid2) // Child2 process
     {
         char read_fd_str[10], write_fd_str[10];
-        snprintf(read_fd_str, sizeof(read_fd_str), "%d", pipe_fd[0]);
-        snprintf(write_fd_str, sizeof(write_fd_str), "%d", pipe_fd[1]);
-
-        execl("./compiledFilesToLoad/B", "./compiledFilesToLoad/B", read_string_fd_ofChild1WriteChild2ReadPipe, read_string_fd_ofChild2WriteChild1ReadPipe, NULL); // NOTE: executing the compiled B.c and passing to its main function the file descriptors as variable arguments.
+        snprintf(read_fd_str, sizeof(read_fd_str), "%d", pipe_fd_ofChild1WriteChild2Read[0]);
+        snprintf(write_fd_str, sizeof(write_fd_str), "%d", pipe_fd_ofChild2WriteChild1Read[1]);
+        execl("./compiledFilesToLoad/A", "./compiledFilesToLoad/A", write_fd_str, read_fd_str, NULL); // NOTE: executing the compiled B.c and passing to its main function the file descriptors as variable arguments.
         perror("execl");
         exit(EXIT_FAILURE);
     }
 
-    // Parent process: Close both ends of the pipe
-    close(pipe_fd[0]);
-    close(pipe_fd[1]);
+    // Parent process: Close both ends of both pipes.
+    close(pipe_fd_ofChild1WriteChild2Read[0]);
+    close(pipe_fd_ofChild1WriteChild2Read[1]);
+
+    close(pipe_fd_ofChild2WriteChild1Read[0]);
+    close(pipe_fd_ofChild2WriteChild1Read[1]);
 
     // Wait for both children to finish
-    wait(NULL);
     wait(NULL);
 
     printf("Both child processes have finished.\n");
 
     return 0;
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 /*
     01)NOTE: keep in mind - how fork execution work flow:
