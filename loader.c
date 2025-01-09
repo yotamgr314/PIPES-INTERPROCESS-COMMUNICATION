@@ -6,10 +6,11 @@
 
 int main()
 {
-    int pipe_fd_Child1WriteChild2Read[2];
-    int pipe_fd_Child2WriteChild1Read[2];
-    if (pipe(pipe_fd_for_child1_to_write_and_child2_to_read) == -1 | pipe(pipe_fd_for_child1_to_write_and_child2_to_read) == -1)
-    { // NOTE creating internal pipe in the kernal operating system and recive read and write file descriptors to it (fd[0] for read, fd[1] for write).
+    int pipe_fd_ofChild1WriteChild2Read[2];
+    int pipe_fd_ofChild2WriteChild1Read[2];
+
+    if (pipe(pipe_fd_ofChild1WriteChild2Read) == -1 | pipe(pipe_fd_ofChild2WriteChild1Read) == -1) // NOTE creating internal pipe in the kernal operating system and recive read and write file descriptors to it (fd[0] for read, fd[1] for write).
+    {
         perror("pipe");
         exit(EXIT_FAILURE);
     }
@@ -26,9 +27,9 @@ int main()
 
         // Child process 1: Load A compiled program.
         // NOTE: the file descriptors will be passed via argv[] (because when loading other programn via exce functions the entire context is replaces including the father process file descriptors)
-        //          - hence all the file descriptors must be converted into a const char* format before we pass them as arguments to argv[].
+        //       - hence all the file descriptors must be converted into a const char* format before we pass them as arguments to argv[].
 
-        char read_fd_child1_writes_child2_reads_str[10], write_fd_child1_writes_child2_reads_str[10]; // 10 is the maximum number of chars needed to represent a file descriptor as a string.
+        char read_string_fd_ofChild1WriteChild2Read[10], write_string_fd_ofChild1WriteChild2Read[10]; // 10 is the maximum number of chars needed to represent a file descriptor as a string.
         // NOTE: int snprintf(char *bufferStr, size_t size, const char *format, value1ofTheSameTypeFormat, value2ofTheSameTypeFormat); --> its a function which converts other values to their string represntation.
         snprintf(read_fd_child1_writes_child2_reads_str, sizeof(read_fd_child1_writes_child2_reads_str), "%d", pipe_fd_for_child1_to_write_and_child2_to_read[0]);
         snprintf(write_fd_child1_writes_child2_reads_str, sizeof(write_fd_child1_writes_child2_reads_str), "%d", pipe_fd_for_child1_to_write_and_child2_to_read[1]);
