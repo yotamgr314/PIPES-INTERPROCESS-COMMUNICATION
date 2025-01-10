@@ -1,7 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
-#include <string.h>
 #include <unistd.h>
+#include <fcntl.h>
 
 int main(int argc, char *argv[]) {
     if (argc != 3) {
@@ -9,20 +9,34 @@ int main(int argc, char *argv[]) {
         exit(EXIT_FAILURE);
     }
 
-    // Convert the file descriptor strings to integers
     int write_fd = atoi(argv[1]);
     int read_fd = atoi(argv[2]);
 
-    // Close the unused read end
+    // Open fileA.txt for reading
+    int file = open("fileA.txt", O_RDONLY);
+    if (file == -1) {
+        perror("open fileA.txt");
+        exit(EXIT_FAILURE);
+    }
+
+    // Read and send chunks to B
+    char buffer[256];
+    ssize_t bytes;
+    while ((bytes = read(file, buffer, sizeof(buffer))) > 0) {
+        write(write_fd, buffer, bytes);
+    }
+    close(file);
+
+    // Read response from B
+    char response[256];
+    read(read_fd, response, sizeof(response));
+    printf("Child A received response: %s\n", response);
+
+    // Close the file descriptors
+    close(write_fd);
     close(read_fd);
 
-    // Send a message to Child 2
-    const char *message_to_child2 = "Hello from A!";
-    write(write_fd, message_to_child2, strlen(message_to_child2));
-    printf("A: Sent message to B: %s\n", message_to_child2);
-
-    // Close the write end after sending the message
-    close(write_fd);
-
-    return 0;
+    // Print final message before exit
+    printf("Child A: My life has reached its worthy end. Goodbye.\n");
+    exit(0);
 }
