@@ -16,30 +16,37 @@ int pipe_fd_ofChild2WriteChild1Read[2];
 
 void signalCallBackFunc(int signalNumber) 
 {
+    if(signalNumber == SIGUSR1)
+    { 
+        if (revivalNumber >= MAX_REVIVAL)
+        {
+            printf("Reached maximum revival limit. Exiting...\n");
+            exit(0);
+        }
+
+        printf("Received SIGUSR1 from child1. Revival number: %d\n", revivalNumber + 1);
+        revivalNumber++;
+    }
+
+
+    if(signalNumber == SIGCHLD)
+    {
+
     int status;
     int waitRes = wait(&status); // collects the dead child even regradless wethere we revive him or not to prevent zombies..
 
-    if (revivalNumber >= MAX_REVIVAL) 
+    if(waitRes > 0)
     {
-        printf("Completed %d revival. Exiting...\n", revivalNumber);
-        exit(0);
-    }
-
-    if(waitRes > 0)// if waitRes is a positive number it indicates that it must be a dead child process id.
-    {
-        revivalNumber+=1;
         
-        if(waitRes==pid1) // NOTE: this code will be executed only in the father process - hence pid1 (which is a global variable will hold child1 processID)
+        if(waitRes==pid1) 
         {
-        char read_fd_str[10], write_fd_str[10];// 10 is the maximum number of chars needed to represent a file descriptor as a string.
+        char read_fd_str[10], write_fd_str[10];
         snprintf(read_fd_str, sizeof(read_fd_str), "%d", pipe_fd_ofChild2WriteChild1Read[0]);
         snprintf(write_fd_str, sizeof(write_fd_str), "%d", pipe_fd_ofChild1WriteChild2Read[1]);
+        execl("./compiledFilesToLoad/A", "./compiledFilesToLoad/A", write_fd_str, read_fd_str, NULL); 
 
-        // NOTE: int execl(const char *path, const char *arg0, const char* arg1, const char* arg2....., NULL); --> excel is a part of the the exec family system call which loads executeable programn and replace the entire context with it.
-        execl("./compiledFilesToLoad/A", "./compiledFilesToLoad/A", write_fd_str, read_fd_str, NULL); // NOTE: executing the compiled A.c and passing to its main function the file descriptors as variable arguments.
-        perror("execl");                                                                              // after it execute we do not return to our code. ordered explaination:
-        exit(EXIT_FAILURE);                                                                           // 01) ./compiledFilesToLoad/A - the path to the executeable file to run.
-                                  
+        perror("execl");                                                                            
+        exit(EXIT_FAILURE);                                                                                       
         }
 
         if(waitRes==pid2)
@@ -47,11 +54,15 @@ void signalCallBackFunc(int signalNumber)
         char read_fd_str[10], write_fd_str[10];
         snprintf(read_fd_str, sizeof(read_fd_str), "%d", pipe_fd_ofChild1WriteChild2Read[0]);
         snprintf(write_fd_str, sizeof(write_fd_str), "%d", pipe_fd_ofChild2WriteChild1Read[1]);
-        execl("./compiledFilesToLoad/B", "./compiledFilesToLoad/B", write_fd_str, read_fd_str, NULL); // NOTE: executing the compiled B.c and passing to its main function the file descriptors as variable arguments.
-        perror("execl"); // if execl sucessed we should not be here. 
+        execl("./compiledFilesToLoad/B", "./compiledFilesToLoad/B", write_fd_str, read_fd_str, NULL); 
+
+        perror("execl"); 
         exit(EXIT_FAILURE);
         }
     }
+
+    }
+
 }
 
 
