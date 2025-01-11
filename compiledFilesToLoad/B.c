@@ -28,7 +28,7 @@ int main(int argc, char *argv[]) {
     if (bytes_read > 0) // if reaciving the message from child1 was sucesfull.
     {
         buffer[bytes_read] = '\0';  // Null-terminate the string
-        printf("\nchild2 Received message from child1 -  %s\n", buffer);
+        printf("\nchild2 Received message from child1 -  %s\n\n", buffer);
 
         // Write the message to fileB.txt
         write(file2, buffer, bytes_read);
@@ -38,7 +38,7 @@ int main(int argc, char *argv[]) {
     // Send a reply to Child 1
     const char *reply_to_child1 = "Thank you for the informainon, ive recivied it.";
     write(write_fd, reply_to_child1, strlen(reply_to_child1));
-    printf("child2: Sends message to child1 -  %s\n", reply_to_child1);
+    printf("child2: Sends message to child1 -  %s\n\n", reply_to_child1);
 
     // Close the file descriptors
     close(file2);

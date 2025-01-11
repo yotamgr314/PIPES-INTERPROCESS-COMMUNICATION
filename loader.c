@@ -1,140 +1,124 @@
+// loader.c
 #include <stdio.h>
 #include <stdlib.h>
-#include <unistd.h> /* for pipe(), fork(), close(), write(), read() */
+#include <unistd.h> // for pipe(), fork(), close(), write(), read()
 #include <sys/types.h>
 #include <sys/wait.h>
 #include <signal.h>
-// GLOBAL VARIABLES SECTIO
+
+// GLOBAL VARIABLES SECTION
 #define MAX_REVIVAL 5
 
-int revivalNumber=0;
+int revivalNumber = 0;
 pid_t pid1, pid2;
-
 int pipe_fd_ofChild1WriteChild2Read[2];
 int pipe_fd_ofChild2WriteChild1Read[2];
 
-
-void signalCallBackFunc(int signalNumber) 
-{
-    if(signalNumber == SIGUSR1)
-    { 
-        printf("Received SIGUSR1 from child1. Revival number: %d\n", revivalNumber + 1);
+void signalCallBackFunc(int signalNumber) {
+    if (signalNumber == SIGUSR1) {
+        printf("Received SIGUSR1 from child1. Revival number: %d\n\n", revivalNumber + 1);
         revivalNumber++;
-        if (revivalNumber >= MAX_REVIVAL)
-        {
+        if (revivalNumber >= MAX_REVIVAL) {
+            printf("*********************************************\n");
             printf("Reached maximum revival limit. Exiting...\n");
+            printf("*********************************************\n");
             exit(0);
         }
-
     }
-    
-    if(signalNumber == SIGCHLD)
-    {
 
+    if (signalNumber == SIGCHLD) {
         int status;
-        int waitRes = wait(&status); // collects the dead child even regradless wethere we revive him or not to prevent zombies..
+        int waitRes = wait(&status); // Collects the dead child to prevent zombies.
 
-        if(waitRes > 0)
-        {
-            if(waitRes==pid1) 
-            {
-                char read_fd_str[10], write_fd_str[10];
-                snprintf(read_fd_str, sizeof(read_fd_str), "%d", pipe_fd_ofChild2WriteChild1Read[0]);
-                snprintf(write_fd_str, sizeof(write_fd_str), "%d", pipe_fd_ofChild1WriteChild2Read[1]);
-                pid1 = fork();
-                if (!pid1)// child1
-                {
-                    execl("./compiledFilesToLoad/A", "./compiledFilesToLoad/A", write_fd_str, read_fd_str, NULL);
-                    perror("execl");
-                    exit(EXIT_FAILURE);                                                                                 
-                }
+        if (waitRes == pid1) {
+            char read_fd_str[10], write_fd_str[10];
+            snprintf(read_fd_str, sizeof(read_fd_str), "%d", pipe_fd_ofChild2WriteChild1Read[0]);
+            snprintf(write_fd_str, sizeof(write_fd_str), "%d", pipe_fd_ofChild1WriteChild2Read[1]);
+            pid1 = fork();
+            if (pid1 == 0) {
+                // CHILD1: CLOSE UNUSED PIPE ENDS
+                close(pipe_fd_ofChild1WriteChild2Read[0]);
+                close(pipe_fd_ofChild2WriteChild1Read[1]);
 
-                if(waitRes==pid2)
-                {
-                    char read_fd_str[10], write_fd_str[10];
-                    snprintf(read_fd_str, sizeof(read_fd_str), "%d", pipe_fd_ofChild1WriteChild2Read[0]);
-                    snprintf(write_fd_str, sizeof(write_fd_str), "%d", pipe_fd_ofChild2WriteChild1Read[1]);
-
-                    pid1 = fork();
-                    if (!pid2) // chil2 
-                    {
-                        execl("./compiledFilesToLoad/B", "./compiledFilesToLoad/B", write_fd_str, read_fd_str, NULL);
-                        perror("execl");
-                        exit(EXIT_FAILURE);                                                                                 
-                    }
-                }
+                execl("./compiledFilesToLoad/A", "./compiledFilesToLoad/A", write_fd_str, read_fd_str, NULL);
+                perror("execl");
+                exit(EXIT_FAILURE);
             }
+        } else if (waitRes == pid2) {
+            char read_fd_str[10], write_fd_str[10];
+            snprintf(read_fd_str, sizeof(read_fd_str), "%d", pipe_fd_ofChild1WriteChild2Read[0]);
+            snprintf(write_fd_str, sizeof(write_fd_str), "%d", pipe_fd_ofChild2WriteChild1Read[1]);
+            pid2 = fork();
+            if (pid2 == 0) {
+                // CHILD2: CLOSE UNUSED PIPE ENDS
+                close(pipe_fd_ofChild1WriteChild2Read[1]);
+                close(pipe_fd_ofChild2WriteChild1Read[0]);
 
+                execl("./compiledFilesToLoad/B", "./compiledFilesToLoad/B", write_fd_str, read_fd_str, NULL);
+                perror("execl");
+                exit(EXIT_FAILURE);
+            }
         }
-
     }
-
 }
 
-
-int main()
-{
+int main() {
     signal(SIGUSR1, signalCallBackFunc);
     signal(SIGCHLD, signalCallBackFunc);
 
-    if (pipe(pipe_fd_ofChild1WriteChild2Read) == -1 || pipe(pipe_fd_ofChild2WriteChild1Read) == -1) 
-    {
+    if (pipe(pipe_fd_ofChild1WriteChild2Read) == -1 || pipe(pipe_fd_ofChild2WriteChild1Read) == -1) {
         perror("pipe");
         exit(EXIT_FAILURE);
     }
 
     pid1 = fork();
-    if (pid1 == -1)
-    {
+    if (pid1 == -1) {
         perror("fork");
         exit(EXIT_FAILURE);
     }
 
     if (!pid1)// child1 process.
     {
-
         char read_fd_str[10], write_fd_str[10];
         snprintf(read_fd_str, sizeof(read_fd_str), "%d", pipe_fd_ofChild2WriteChild1Read[0]);
         snprintf(write_fd_str, sizeof(write_fd_str), "%d", pipe_fd_ofChild1WriteChild2Read[1]);
-        execl("./compiledFilesToLoad/A", "./compiledFilesToLoad/A", write_fd_str, read_fd_str, NULL); 
 
-        perror("execl");                                                                              
-        exit(EXIT_FAILURE);                                                                                                                                                                                                                                                           
-    }
+        // CHILD1: CLOSE UNUSED PIPE ENDS
+        close(pipe_fd_ofChild1WriteChild2Read[0]);
+        close(pipe_fd_ofChild2WriteChild1Read[1]);
 
-
-    // main process
-    pid2 = fork();
-    if (pid2 == -1)
-    {
-        perror("fork");
-        exit(EXIT_FAILURE);
-    }
-
-    if (!pid2) // Child2 process.
-    {
-        char read_fd_str[10], write_fd_str[10];
-        snprintf(read_fd_str, sizeof(read_fd_str), "%d", pipe_fd_ofChild1WriteChild2Read[0]);
-        snprintf(write_fd_str, sizeof(write_fd_str), "%d", pipe_fd_ofChild2WriteChild1Read[1]);
-        execl("./compiledFilesToLoad/B", "./compiledFilesToLoad/B", write_fd_str, read_fd_str, NULL); // NOTE: executing the compiled B.c and passing to its main function the file descriptors as variable arguments.
+        execl("./compiledFilesToLoad/A", "./compiledFilesToLoad/A", write_fd_str, read_fd_str, NULL);
         perror("execl");
         exit(EXIT_FAILURE);
     }
 
-    // main process: Close both ends of both pipes.
-    close(pipe_fd_ofChild1WriteChild2Read[0]);
-    close(pipe_fd_ofChild1WriteChild2Read[1]);
+    pid2 = fork();
+    if (pid2 == -1) {
+        perror("fork");
+        exit(EXIT_FAILURE);
+    }
 
-    close(pipe_fd_ofChild2WriteChild1Read[0]);
-    close(pipe_fd_ofChild2WriteChild1Read[1]);
+    if (!pid2)// child2
+    {
+        char read_fd_str[10], write_fd_str[10];
+        snprintf(read_fd_str, sizeof(read_fd_str), "%d", pipe_fd_ofChild1WriteChild2Read[0]);
+        snprintf(write_fd_str, sizeof(write_fd_str), "%d", pipe_fd_ofChild2WriteChild1Read[1]);
 
+        // CHILD2: CLOSE UNUSED PIPE ENDS
+        close(pipe_fd_ofChild1WriteChild2Read[1]);
+        close(pipe_fd_ofChild2WriteChild1Read[0]);
 
-while (1) {
-    pause(); // ממתין ל-Signal
-}
+        execl("./compiledFilesToLoad/B", "./compiledFilesToLoad/B", write_fd_str, read_fd_str, NULL);
+        perror("execl");
+        exit(EXIT_FAILURE);
+    }
 
-return 0;
+    // LOADER: KEEP THE PIPES OPEN
+    while (1) {
+        pause();
+    }
 
+    return 0;
 }
 
 

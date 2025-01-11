@@ -34,10 +34,10 @@ int main(int argc, char *argv[]) {
     // child1 Read response message from childs2 via the pipe.
     char response[256];
     read(read_fd, response, sizeof(response));
-    printf("Child1: recivied response from child2 - %s\n", response);
+    printf("Child1: recivied response from child2 - %s\n\n", response);
 
     // Print final message before exit
-    printf("Child1: My life has reached its worthy end. Goodbye.\n");
+    printf("Child1: My life has reached its worthy end. Goodbye.\n\n");
 
     //Send SIGUSR1 signal to loader (the parent process) before exiting so it can inc the revival counter.
     kill(getppid(), SIGUSR1);
