@@ -3,7 +3,7 @@
 #include <unistd.h> /* for pipe(), fork(), close(), write(), read() */
 #include <sys/types.h>
 #include <sys/wait.h>
-
+#include <signal.h>
 // GLOBAL VARIABLES SECTIO
 #define MAX_REVIVAL 5
 
@@ -18,60 +18,66 @@ void signalCallBackFunc(int signalNumber)
 {
     if(signalNumber == SIGUSR1)
     { 
+        printf("Received SIGUSR1 from child1. Revival number: %d\n", revivalNumber + 1);
+        revivalNumber++;
         if (revivalNumber >= MAX_REVIVAL)
         {
             printf("Reached maximum revival limit. Exiting...\n");
             exit(0);
         }
 
-        printf("Received SIGUSR1 from child1. Revival number: %d\n", revivalNumber + 1);
-        revivalNumber++;
     }
-
-
+    
     if(signalNumber == SIGCHLD)
     {
 
-    int status;
-    int waitRes = wait(&status); // collects the dead child even regradless wethere we revive him or not to prevent zombies..
+        int status;
+        int waitRes = wait(&status); // collects the dead child even regradless wethere we revive him or not to prevent zombies..
 
-    if(waitRes > 0)
-    {
-        
-        if(waitRes==pid1) 
+        if(waitRes > 0)
         {
-        char read_fd_str[10], write_fd_str[10];
-        snprintf(read_fd_str, sizeof(read_fd_str), "%d", pipe_fd_ofChild2WriteChild1Read[0]);
-        snprintf(write_fd_str, sizeof(write_fd_str), "%d", pipe_fd_ofChild1WriteChild2Read[1]);
-        execl("./compiledFilesToLoad/A", "./compiledFilesToLoad/A", write_fd_str, read_fd_str, NULL); 
+            if(waitRes==pid1) 
+            {
+                char read_fd_str[10], write_fd_str[10];
+                snprintf(read_fd_str, sizeof(read_fd_str), "%d", pipe_fd_ofChild2WriteChild1Read[0]);
+                snprintf(write_fd_str, sizeof(write_fd_str), "%d", pipe_fd_ofChild1WriteChild2Read[1]);
+                pid1 = fork();
+                if (!pid1)// child1
+                {
+                    execl("./compiledFilesToLoad/A", "./compiledFilesToLoad/A", write_fd_str, read_fd_str, NULL);
+                    perror("execl");
+                    exit(EXIT_FAILURE);                                                                                 
+                }
 
-        perror("execl");                                                                            
-        exit(EXIT_FAILURE);                                                                                       
+                if(waitRes==pid2)
+                {
+                    char read_fd_str[10], write_fd_str[10];
+                    snprintf(read_fd_str, sizeof(read_fd_str), "%d", pipe_fd_ofChild1WriteChild2Read[0]);
+                    snprintf(write_fd_str, sizeof(write_fd_str), "%d", pipe_fd_ofChild2WriteChild1Read[1]);
+
+                    pid1 = fork();
+                    if (!pid2) // chil2 
+                    {
+                        execl("./compiledFilesToLoad/B", "./compiledFilesToLoad/B", write_fd_str, read_fd_str, NULL);
+                        perror("execl");
+                        exit(EXIT_FAILURE);                                                                                 
+                    }
+                }
+            }
+
         }
-
-        if(waitRes==pid2)
-        {
-        char read_fd_str[10], write_fd_str[10];
-        snprintf(read_fd_str, sizeof(read_fd_str), "%d", pipe_fd_ofChild1WriteChild2Read[0]);
-        snprintf(write_fd_str, sizeof(write_fd_str), "%d", pipe_fd_ofChild2WriteChild1Read[1]);
-        execl("./compiledFilesToLoad/B", "./compiledFilesToLoad/B", write_fd_str, read_fd_str, NULL); 
-
-        perror("execl"); 
-        exit(EXIT_FAILURE);
-        }
-    }
 
     }
 
 }
 
 
-
-
 int main()
 {
+    signal(SIGUSR1, signalCallBackFunc);
+    signal(SIGCHLD, signalCallBackFunc);
 
-    if (pipe(pipe_fd_ofChild1WriteChild2Read) == -1 || pipe(pipe_fd_ofChild2WriteChild1Read) == -1) // NOTE creating internal pipe in the kernal operating system and recive read and write file descriptors to it (fd[0] for read, fd[1] for write).
+    if (pipe(pipe_fd_ofChild1WriteChild2Read) == -1 || pipe(pipe_fd_ofChild2WriteChild1Read) == -1) 
     {
         perror("pipe");
         exit(EXIT_FAILURE);
@@ -84,25 +90,20 @@ int main()
         exit(EXIT_FAILURE);
     }
 
-    if (!pid1) // Child1 process
+    if (!pid1)// child1 process.
     {
-        // Child process 1: Load A compiled program.
-        // the file descriptors will be passed via argv[] (because when loading other programn via exce functions the entire context is replaces including the father process file descriptors)
-        // hence all the file descriptors must be converted into a const char* format before we pass them as arguments to argv[].
 
-        // NOTE: int snprintf(char *bufferStr, size_t size, const char *format, value1ofTheSameTypeFormat, value2ofTheSameTypeFormat); --> its a function which converts other values to their string represntation.
-        char read_fd_str[10], write_fd_str[10];// 10 is the maximum number of chars needed to represent a file descriptor as a string.
+        char read_fd_str[10], write_fd_str[10];
         snprintf(read_fd_str, sizeof(read_fd_str), "%d", pipe_fd_ofChild2WriteChild1Read[0]);
         snprintf(write_fd_str, sizeof(write_fd_str), "%d", pipe_fd_ofChild1WriteChild2Read[1]);
+        execl("./compiledFilesToLoad/A", "./compiledFilesToLoad/A", write_fd_str, read_fd_str, NULL); 
 
-        // NOTE: int execl(const char *path, const char *arg0, const char* arg1, const char* arg2....., NULL); --> excel is a part of the the exec family system call which loads executeable programn and replace the entire context with it.
-        execl("./compiledFilesToLoad/A", "./compiledFilesToLoad/A", write_fd_str, read_fd_str, NULL); // NOTE: executing the compiled A.c and passing to its main function the file descriptors as variable arguments.
-        perror("execl");                                                                              // after it execute we do not return to our code. ordered explaination:
-        exit(EXIT_FAILURE);                                                                           // 01) ./compiledFilesToLoad/A - the path to the executeable file to run.
-                                                                                                      // 02) ./compiledFilesToLoad/A - the name of the programn
-                                                                                                      // 03) everything after that are a list of parameters passed to the argv[] of the new programn which will be executed. in our case its the read_fd_str and write_fd_str, the NULL symbolize the end of the argv[] array.                                                                                                  // if we are here it means the execl function as failed.
+        perror("execl");                                                                              
+        exit(EXIT_FAILURE);                                                                                                                                                                                                                                                           
     }
 
+
+    // main process
     pid2 = fork();
     if (pid2 == -1)
     {
@@ -110,7 +111,7 @@ int main()
         exit(EXIT_FAILURE);
     }
 
-    if (!pid2) // Child2 process
+    if (!pid2) // Child2 process.
     {
         char read_fd_str[10], write_fd_str[10];
         snprintf(read_fd_str, sizeof(read_fd_str), "%d", pipe_fd_ofChild1WriteChild2Read[0]);
@@ -120,7 +121,7 @@ int main()
         exit(EXIT_FAILURE);
     }
 
-    // Parent process: Close both ends of both pipes.
+    // main process: Close both ends of both pipes.
     close(pipe_fd_ofChild1WriteChild2Read[0]);
     close(pipe_fd_ofChild1WriteChild2Read[1]);
 

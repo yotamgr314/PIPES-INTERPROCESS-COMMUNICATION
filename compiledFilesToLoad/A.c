@@ -19,7 +19,7 @@ int main(int argc, char *argv[]) {
         exit(EXIT_FAILURE);
     }
 
-    // Read and send chunks to B
+    // child1 reads from file1 and send chunks to child2.
     char buffer[256];
     ssize_t bytes;
     while ((bytes = read(file, buffer, sizeof(buffer))) > 0) {
@@ -27,16 +27,16 @@ int main(int argc, char *argv[]) {
     }
     close(file);
 
-    // Read response from B
+    // child1 Read response message from childs2 via the pipe.
     char response[256];
     read(read_fd, response, sizeof(response));
-    printf("Child A received response: %s\n", response);
+    printf("Child1 received response: %s\n", response);
 
     // Close the file descriptors
     close(write_fd);
     close(read_fd);
 
     // Print final message before exit
-    printf("Child A: My life has reached its worthy end. Goodbye.\n");
+    printf("Child1: My life has reached its worthy end. Goodbye.\n");
     exit(0);
 }

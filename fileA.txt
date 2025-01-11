@@ -1,0 +1,1 @@
+content read from file1 by child1 
