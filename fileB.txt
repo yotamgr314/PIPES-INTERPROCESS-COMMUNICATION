@@ -1,0 +1,12 @@
+content read from file1 by child1 
+content read from file1 by child1 
+content read from file1 by child1 
+content read from file1 by child1 
+content read from file1 by child1 
+content read from file1 by child1 
+content read from file1 by child1 
+content read from file1 by child1 
+hahahahah msg from child1
+hahahahah msg from child1
+hahahahah msg from child1
+hahahahah msg from child1
